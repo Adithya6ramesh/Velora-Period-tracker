@@ -3,7 +3,7 @@ export class PeriodTracker {
   /**
    * Calculate cycle lengths between consecutive logged periods
    * @param {string[]} periodDates - Array of period start dates in YYYY-MM-DD format
-   * @returns {number[]} Array of cycle lengths in days
+   * @returns {{length: number, startDate: Date}[]} Array of cycle data objects
    */
   static calculateCycleLengths(periodDates) {
     if (periodDates.length < 2) return [];
@@ -12,18 +12,21 @@ export class PeriodTracker {
       .map(date => new Date(date))
       .sort((a, b) => a - b);
     
-    const cycleLengths = [];
+    const cycleData = [];
     for (let i = 1; i < sortedDates.length; i++) {
       const diffTime = sortedDates[i] - sortedDates[i - 1];
       const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
       
       // Only include realistic cycle lengths (21-35 days)
       if (diffDays >= 21 && diffDays <= 35) {
-        cycleLengths.push(diffDays);
+        cycleData.push({
+          length: diffDays,
+          startDate: sortedDates[i - 1],
+        });
       }
     }
     
-    return cycleLengths;
+    return cycleData;
   }
 
   /**
@@ -32,14 +35,14 @@ export class PeriodTracker {
    * @returns {number} Average cycle length in days (defaults to 28)
    */
   static getAverageCycleLength(periodDates) {
-    const cycleLengths = this.calculateCycleLengths(periodDates);
+    const cycleData = this.calculateCycleLengths(periodDates);
     
-    if (cycleLengths.length === 0) {
+    if (cycleData.length === 0) {
       return 28; // Default cycle length
     }
     
-    const sum = cycleLengths.reduce((acc, length) => acc + length, 0);
-    return Math.round(sum / cycleLengths.length);
+    const sum = cycleData.reduce((acc, cycle) => acc + cycle.length, 0);
+    return Math.round(sum / cycleData.length);
   }
 
   /**
@@ -122,12 +125,13 @@ export class PeriodTracker {
    * @returns {string} Regularity status: 'Regular', 'Irregular', or 'Not enough data'
    */
   static getCycleRegularity(periodDates) {
-    const cycleLengths = this.calculateCycleLengths(periodDates);
+    const cycleData = this.calculateCycleLengths(periodDates);
     
-    if (cycleLengths.length < 2) {
+    if (cycleData.length < 2) {
       return 'Not enough data';
     }
     
+    const cycleLengths = cycleData.map(cycle => cycle.length);
     const variation = Math.max(...cycleLengths) - Math.min(...cycleLengths);
     return variation <= 5 ? 'Regular' : 'Irregular';
   }
@@ -140,13 +144,16 @@ export class PeriodTracker {
   static getCycleMessage(periodDates) {
     if (periodDates.length < 3) return '';
     
-    const cycleLengths = this.calculateCycleLengths(periodDates);
+    const cycleData = this.calculateCycleLengths(periodDates);
     const avgCycle = this.getAverageCycleLength(periodDates);
-    const lastCycle = cycleLengths[cycleLengths.length - 1];
+    
+    if (cycleData.length === 0) return '';
+
+    const lastCycle = cycleData[cycleData.length - 1];
     
     if (!lastCycle) return '';
     
-    const difference = lastCycle - avgCycle;
+    const difference = lastCycle.length - avgCycle;
     
     if (Math.abs(difference) <= 2) {
       return 'Your cycle is regular this month.';
