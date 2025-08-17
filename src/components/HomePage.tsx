@@ -7,15 +7,43 @@ import { Toast } from "./ui/toast";
 export function HomePage() {
   const [showToast, setShowToast] = useState(false);
   const [selectedDate, setSelectedDate] = useState<Date | undefined>();
+  const [selectedDates, setSelectedDates] = useState<Set<string>>(new Set());
+
+  const formatDateKey = (date: Date) => {
+    return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+  };
 
   const handleDateClick = (date: Date) => {
     setSelectedDate(date);
+    const dateKey = formatDateKey(date);
+    const newSelectedDates = new Set(selectedDates);
+    
+    if (selectedDates.has(dateKey)) {
+      // If the date is already selected, remove it and the following 6 days
+      for (let i = 0; i < 7; i++) {
+        const nextDate = new Date(date);
+        nextDate.setDate(date.getDate() + i);
+        const nextDateKey = formatDateKey(nextDate);
+        newSelectedDates.delete(nextDateKey);
+      }
+    } else {
+      // If the date is not selected, add it and the following 6 days
+      for (let i = 0; i < 7; i++) {
+        const nextDate = new Date(date);
+        nextDate.setDate(date.getDate() + i);
+        const nextDateKey = formatDateKey(nextDate);
+        newSelectedDates.add(nextDateKey);
+      }
+    }
+    
+    setSelectedDates(newSelectedDates);
     setShowToast(true);
   };
 
   const handleLogPeriod = () => {
-    setSelectedDate(new Date());
-    setShowToast(true);
+    const today = new Date();
+    setSelectedDate(today);
+    handleDateClick(today);
   };
 
   return (
@@ -60,7 +88,10 @@ export function HomePage() {
         className="w-full max-w-md"
       >
         <div className="bg-white/90 backdrop-blur-md rounded-3xl p-8 shadow-xl border border-pink-100/50 hover:shadow-2xl transition-shadow duration-500">
-          <EnhancedPeriodCalendar onDateClick={handleDateClick} />
+          <EnhancedPeriodCalendar 
+            onDateClick={handleDateClick}
+            selectedDates={selectedDates}
+          />
         </div>
       </motion.div>
 

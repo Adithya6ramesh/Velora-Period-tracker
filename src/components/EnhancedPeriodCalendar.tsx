@@ -5,24 +5,55 @@ import { Button } from "./ui/button";
 
 interface CalendarProps {
   onDateClick: (date: Date) => void;
+  selectedDates: Set<string>;
 }
 
-export function EnhancedPeriodCalendar({ onDateClick }: CalendarProps) {
+export function EnhancedPeriodCalendar({ onDateClick, selectedDates }: CalendarProps) {
   const [currentDate, setCurrentDate] = useState(new Date(2025, 7, 1)); // August 2025
   
-  // Mock data matching the screenshot
-  const periodDates = new Set([
-    '2025-08-15', '2025-08-16', '2025-08-17', '2025-08-18'
-  ]);
-  
-  const predictedDates = new Set([
-    '2025-09-12', '2025-09-13', '2025-09-14', '2025-09-15'
-  ]);
-
   const monthNames = [
     "January", "February", "March", "April", "May", "June",
     "July", "August", "September", "October", "November", "December"
   ];
+
+  const formatDateKey = (year: number, month: number, day: number) => {
+    return `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+  };
+
+  // Calculate predictions for next 6 months
+  const calculatePredictions = () => {
+    const predictions = new Set<string>();
+    const CYCLE_LENGTH = 28; // Average menstrual cycle length
+    const PERIOD_LENGTH = 7; // Length of period
+
+    // Get the latest period start date from selectedDates
+    const selectedDatesList = Array.from(selectedDates).sort();
+    if (selectedDatesList.length === 0) return predictions;
+
+    const lastPeriodStart = new Date(selectedDatesList[selectedDatesList.length - 1]);
+
+    // Calculate next 6 months of predictions
+    for (let month = 1; month <= 6; month++) {
+      const nextPeriodStart = new Date(lastPeriodStart);
+      nextPeriodStart.setDate(lastPeriodStart.getDate() + (CYCLE_LENGTH * month));
+
+      // Add 7 days for each predicted period
+      for (let day = 0; day < PERIOD_LENGTH; day++) {
+        const predictedDate = new Date(nextPeriodStart);
+        predictedDate.setDate(nextPeriodStart.getDate() + day);
+        const dateKey = formatDateKey(
+          predictedDate.getFullYear(),
+          predictedDate.getMonth() + 1,
+          predictedDate.getDate()
+        );
+        predictions.add(dateKey);
+      }
+    }
+
+    return predictions;
+  };
+
+  const predictedDates = calculatePredictions();
 
   const getDaysInMonth = (date: Date) => {
     return new Date(date.getFullYear(), date.getMonth() + 1, 0).getDate();
@@ -30,10 +61,6 @@ export function EnhancedPeriodCalendar({ onDateClick }: CalendarProps) {
 
   const getFirstDayOfMonth = (date: Date) => {
     return new Date(date.getFullYear(), date.getMonth(), 1).getDay();
-  };
-
-  const formatDateKey = (year: number, month: number, day: number) => {
-    return `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
   };
 
   const renderCalendarDays = () => {
@@ -48,7 +75,7 @@ export function EnhancedPeriodCalendar({ onDateClick }: CalendarProps) {
 
     // Days of the month
     for (let day = 1; day <= daysInMonth; day++) {
-      const dateKey = formatDateKey(currentDate.getFullYear(), currentDate.getMonth(), day);
+      const dateKey = formatDateKey(currentDate.getFullYear(), currentDate.getMonth() + 1, day);
       const date = new Date(currentDate.getFullYear(), currentDate.getMonth(), day);
       const isToday = new Date().toDateString() === date.toDateString();
       
@@ -58,10 +85,10 @@ export function EnhancedPeriodCalendar({ onDateClick }: CalendarProps) {
         dayClass += " ring-2 ring-pink-400 ring-offset-2";
       }
       
-      if (periodDates.has(dateKey)) {
-        dayClass += " bg-red-400 text-white hover:bg-red-500 shadow-md";
+      if (selectedDates.has(dateKey)) {
+        dayClass += " bg-red-200 text-red-800 hover:bg-red-300 shadow-md"; // Pastel red
       } else if (predictedDates.has(dateKey)) {
-        dayClass += " bg-pink-100 text-pink-800 border-2 border-dashed border-pink-300 hover:bg-pink-200";
+        dayClass += " bg-transparent text-pink-800 border-2 border-dotted border-pink-400 hover:bg-pink-50"; // Pink dotted circle
       } else {
         dayClass += " hover:bg-pink-50 text-gray-700";
       }
@@ -139,15 +166,15 @@ export function EnhancedPeriodCalendar({ onDateClick }: CalendarProps) {
       {/* Legend */}
       <div className="flex items-center justify-center gap-6 text-sm">
         <div className="flex items-center gap-2">
-          <div className="w-4 h-4 rounded-full bg-red-400"></div>
-          <span className="text-gray-600">Period start</span>
-        </div>
-        <div className="flex items-center gap-2">
-          <div className="w-4 h-4 rounded-full bg-pink-100 border-2 border-dashed border-pink-300"></div>
+          <div className="w-4 h-4 rounded-full bg-red-200"></div>
           <span className="text-gray-600">Period days</span>
         </div>
         <div className="flex items-center gap-2">
-          <div className="w-4 h-4 rounded-full border-2 border-gray-300"></div>
+          <div className="w-4 h-4 rounded-full bg-yellow-100"></div>
+          <span className="text-gray-600">Ovulation</span>
+        </div>
+        <div className="flex items-center gap-2">
+          <div className="w-4 h-4 rounded-full border-2 border-dotted border-pink-400"></div>
           <span className="text-gray-600">Predicted</span>
         </div>
       </div>
